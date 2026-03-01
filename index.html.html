@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Инсталляции — Чеклисты</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F6F3;--surface:#FFFFFF;--border:#E4E2DC;--text:#1A1916;--muted:#9E9B93;--faint:#F0EEE9;
+  --c1:#2D4A8A;--c2:#7B3F6E;--c3:#2A7A5A;--c4:#8A4A2D;--c5:#3A3A3A;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:60px}
+
+/* sync indicator */
+.sync-bar{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  height:3px;background:transparent;transition:background .3s;
+}
+.sync-bar.syncing{background:linear-gradient(90deg,var(--c3),var(--c1),var(--c3));background-size:200%;animation:syncAnim 1.2s linear infinite;}
+.sync-bar.error{background:#C04040;}
+.sync-bar.ok{background:var(--c3);animation:fadeOut .8s ease forwards .5s;}
+@keyframes syncAnim{0%{background-position:0%}100%{background-position:200%}}
+@keyframes fadeOut{to{opacity:0}}
+
+.sync-status{
+  position:fixed;top:10px;right:16px;z-index:1001;
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  padding:4px 10px;border-radius:100px;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--muted);display:flex;align-items:center;gap:5px;
+  transition:all .3s;
+}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:background .3s;}
+.sync-status.live .sync-dot{background:#3A9A5A;animation:pulse 2s ease-in-out infinite;}
+.sync-status.error-s .sync-dot{background:#C04040;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.header{padding:44px 40px 28px;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.header-eyebrow{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.header-title{font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2.4rem);font-weight:400;color:var(--text)}
+.header-title em{font-style:italic;color:var(--muted)}
+
+.progress-panel{padding:24px 40px;border-bottom:1px solid var(--border);background:var(--surface)}
+.progress-top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+.progress-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.progress-big{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:400;color:var(--text);line-height:1}
+.progress-sub{font-size:11px;color:var(--muted);margin-top:3px}
+
+.seg-bar{display:flex;gap:3px;height:7px;border-radius:4px;overflow:hidden}
+.seg{height:100%;border-radius:4px;overflow:hidden;position:relative;transition:flex .5s cubic-bezier(.4,0,.2,1)}
+.seg-track{height:100%;border-radius:4px}
+.seg-fill{position:absolute;left:0;top:0;bottom:0;transition:width .5s cubic-bezier(.4,0,.2,1);border-radius:4px}
+.seg-1 .seg-track{background:rgba(45,74,138,.15)}.seg-1 .seg-fill{background:var(--c1)}
+.seg-2 .seg-track{background:rgba(123,63,110,.15)}.seg-2 .seg-fill{background:var(--c2)}
+.seg-3 .seg-track{background:rgba(42,122,90,.15)}.seg-3 .seg-fill{background:var(--c3)}
+.seg-4 .seg-track{background:rgba(138,74,45,.15)}.seg-4 .seg-fill{background:var(--c4)}
+.seg-5 .seg-track{background:rgba(58,58,58,.12)}.seg-5 .seg-fill{background:var(--c5)}
+
+.legend{display:flex;gap:18px;margin-top:12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}
+.legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ldone{font-size:10px;background:var(--faint);border-radius:3px;padding:1px 5px;color:var(--muted)}
+
+.actions-bar{padding:14px 40px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);background:var(--surface)}
+.act-btn{font-family:'Manrope',sans-serif;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:5px}
+.act-btn:hover{border-color:var(--text);color:var(--text);background:var(--faint)}
+.act-btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.act-btn.primary:hover{background:#333}
+
+.grid-wrap{padding:20px 40px 0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.grid{display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:14px;min-width:1060px}
+
+.col{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.col-head{padding:16px 18px 13px;border-bottom:1px solid var(--border);position:relative}
+.col-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0}
+.col-num{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.col-title{font-family:'Playfair Display',serif;font-size:14px;font-weight:400;line-height:1.3;color:var(--text)}
+.col-progress{margin-top:9px;display:flex;align-items:center;gap:9px}
+.col-prog-track{flex:1;height:3px;border-radius:2px;background:var(--faint);overflow:hidden}
+.col-prog-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.col-prog-pct{font-size:10px;color:var(--muted);flex-shrink:0;min-width:26px;text-align:right}
+
+.col-tasks{flex:1;padding:8px 10px;overflow-y:auto;max-height:440px}
+.col-tasks::-webkit-scrollbar{width:3px}
+.col-tasks::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.task-item{display:flex;align-items:flex-start;gap:8px;padding:7px 7px 7px 5px;border-radius:7px;transition:background .1s;animation:fadeUp .2s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.task-item:hover{background:var(--faint)}
+.task-item.done{opacity:.5}
+.task-item.done .ti-name{text-decoration:line-through;color:var(--muted)}
+
+.ti-check{width:17px;height:17px;border-radius:50%;flex-shrink:0;border:1.5px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s,background .15s;margin-top:2px}
+.ti-check:hover{border-color:var(--muted)}
+.task-item.done .ti-check{border-color:transparent}
+.ti-check svg{display:none}
+.task-item.done .ti-check svg{display:block}
+
+.ti-body{flex:1;min-width:0}
+.ti-name{font-size:12px;font-weight:400;line-height:1.4;color:var(--text);width:100%;background:transparent;border:none;outline:none;font-family:'Manrope',sans-serif;resize:none;overflow:hidden;min-height:17px}
+.ti-name::placeholder{color:var(--muted);font-style:italic}
+
+.ti-meta{display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;align-items:center}
+.ti-assignee,.ti-email,.ti-date{font-size:10px;color:var(--muted);background:transparent;border:none;outline:none;font-family:'Manrope',sans-serif}
+.ti-assignee{max-width:80px}
+.ti-assignee::placeholder,.ti-email::placeholder{color:var(--border)}
+.ti-email{color:#4A7AC7;text-decoration:underline dotted;max-width:100px}
+.ti-email::placeholder{text-decoration:none;color:var(--border)}
+.ti-date{cursor:pointer;max-width:100px}
+.ti-date::-webkit-calendar-picker-indicator{opacity:.3;cursor:pointer;width:9px}
+.ti-date.urgent{color:#C04040;font-weight:600}
+.ti-date.soon{color:#A07020}
+.ti-date.ok{color:#3A7A50}
+.meta-sep{font-size:10px;color:var(--border)}
+
+.ti-actions{display:flex;flex-direction:column;gap:3px;flex-shrink:0;opacity:0;transition:opacity .1s}
+.task-item:hover .ti-actions{opacity:1}
+.ti-btn{width:20px;height:20px;border-radius:4px;border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,border-color .1s}
+.ti-btn.mail:hover{background:#EBF0FA;border-color:#A0B8E0}
+.ti-btn.del:hover{background:#FAEBEb;border-color:#E0A0A0}
+
+.col-foot{padding:7px 10px 10px;border-top:1px solid var(--border)}
+.add-btn{width:100%;padding:7px 10px;border-radius:7px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;font-family:'Manrope',sans-serif;font-size:11px;color:var(--muted);transition:border-color .15s,color .15s,background .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.add-btn:hover{border-color:var(--muted);color:var(--text);background:var(--faint)}
+
+/* loading overlay */
+.loading{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s;}
+.loading.hidden{opacity:0;pointer-events:none;}
+.loading-title{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--muted)}
+.loading-dots{display:flex;gap:6px}
+.loading-dots span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:loadDot 1.2s ease-in-out infinite;}
+.loading-dots span:nth-child(2){animation-delay:.2s}
+.loading-dots span:nth-child(3){animation-delay:.4s}
+@keyframes loadDot{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+.toast{position:fixed;bottom:22px;right:22px;z-index:9999;padding:10px 18px;border-radius:8px;background:var(--text);color:var(--bg);font-size:11px;letter-spacing:.05em;animation:toastIn .2s ease;max-width:280px}
+@keyframes toastIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:900px){.header,.progress-panel,.grid-wrap,.actions-bar{padding-left:20px;padding-right:20px}}
+</style>
+</head>
+<body>
+
+<!-- Sync bar -->
+<div class="sync-bar" id="sync-bar"></div>
+<div class="sync-status" id="sync-status">
+  <div class="sync-dot"></div>
+  <span id="sync-label">Подключение...</span>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading" id="loading">
+  <div class="loading-title">Загружаем данные...</div>
+  <div class="loading-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="header-eyebrow">Командный трекер · 2025</div>
+    <h1 class="header-title">Инсталляции &amp; <em>Снабжение</em></h1>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-panel">
+  <div class="progress-top">
+    <div>
+      <div class="progress-label">Общий прогресс</div>
+      <div class="progress-big" id="overall-pct">0%</div>
+      <div class="progress-sub" id="overall-counts">0 из 0 задач выполнено</div>
+    </div>
+  </div>
+  <div class="seg-bar">
+    <div class="seg seg-1" style="flex:1"><div class="seg-track"><div class="seg-fill" id="sf-0" style="width:0%"></div></div></div>
+    <div class="seg seg-2" style="flex:1"><div class="seg-track"><div class="seg-fill" id="sf-1" style="width:0%"></div></div></div>
+    <div class="seg seg-3" style="flex:1"><div class="seg-track"><div class="seg-fill" id="sf-2" style="width:0%"></div></div></div>
+    <div class="seg seg-4" style="flex:1"><div class="seg-track"><div class="seg-fill" id="sf-3" style="width:0%"></div></div></div>
+    <div class="seg seg-5" style="flex:1"><div class="seg-track"><div class="seg-fill" id="sf-4" style="width:0%"></div></div></div>
+  </div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<!-- ACTIONS -->
+<div class="actions-bar">
+  <button class="act-btn primary" onclick="notifyAll()">
+    <svg width="13" height="10" viewBox="0 0 13 10" fill="none"><rect x=".5" y=".5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M.5 2L6.5 6l6-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    Уведомить всех
+  </button>
+  <button class="act-btn" onclick="exportCSV()">↓ Экспорт CSV</button>
+  <button class="act-btn" onclick="clearAllDone()">× Удалить выполненные</button>
+</div>
+
+<!-- GRID -->
+<div class="grid-wrap">
+  <div class="grid" id="main-grid"></div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, remove, push, get }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBf6tKlQfyeMmpwB3fmC2nZHNnBG01UAMY",
+  authDomain: "installations-checklist.firebaseapp.com",
+  databaseURL: "https://installations-checklist-default-rtdb.firebaseio.com",
+  projectId: "installations-checklist",
+  storageBucket: "installations-checklist.firebasestorage.app",
+  messagingSenderId: "926946771307",
+  appId: "1:926946771307:web:9a1325b1ad885dc3c20c2e",
+  measurementId: "G-6LKL20DDF2"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ─── SECTIONS ───
+const SECTIONS = [
+  {id:'s1', title:'Кирпичные панельки',       num:'01', color:'var(--c1)'},
+  {id:'s2', title:'Кинетический икат',         num:'02', color:'var(--c2)'},
+  {id:'s3', title:'Интерактивные панельки',    num:'03', color:'var(--c3)'},
+  {id:'s4', title:'Коллективные воспоминания', num:'04', color:'var(--c4)'},
+  {id:'s5', title:'Снабжение & Закупки',       num:'05', color:'var(--c5)'},
+];
+
+const DEFAULT_TASKS = {
+  s1:['Монтаж опорных конструкций','Укладка кирпичных элементов','Подготовка освещения','Финальная проверка'],
+  s2:['Подвеска кинетических элементов','Настройка механизмов движения','Монтаж ткани — икат','Тест скорости и амплитуды'],
+  s3:['Установка сенсоров','Программирование реакций','Монтаж экранов / проекторов','Пользовательское тестирование'],
+  s4:['Сбор архивных материалов','Оцифровка материалов','Монтаж экспозиции','Финальная расстановка'],
+  s5:['Закупка монтажного оборудования','Аренда светового оборудования','Доставка материалов','Договор с поставщиком звука','Кабельная продукция'],
+};
+
+// ─── STATE ───
+let data = {}; // { s1: { taskId: {...}, ... }, ... }
+let _ignoreRemote = false; // prevent echo on own writes
+
+// ─── SYNC STATUS ───
+function setSyncStatus(state) {
+  const bar = document.getElementById('sync-bar');
+  const status = document.getElementById('sync-status');
+  const label = document.getElementById('sync-label');
+  bar.className = 'sync-bar ' + state;
+  if (state === 'syncing') {
+    label.textContent = 'Синхронизация...';
+    status.className = 'sync-status';
+  } else if (state === 'ok') {
+    label.textContent = 'Синхронизировано';
+    status.className = 'sync-status live';
+  } else if (state === 'error') {
+    label.textContent = 'Ошибка соединения';
+    status.className = 'sync-status error-s';
+  } else if (state === 'live') {
+    label.textContent = 'Live';
+    status.className = 'sync-status live';
+  }
+}
+
+// ─── INIT ───
+async function init() {
+  setSyncStatus('syncing');
+
+  // Check if data exists, if not — seed defaults
+  const snap = await get(ref(db, 'tasks'));
+  if (!snap.exists()) {
+    const seed = {};
+    SECTIONS.forEach(s => {
+      seed[s.id] = {};
+      DEFAULT_TASKS[s.id].forEach(name => {
+        const key = push(ref(db, s.id)).key; // generate unique key
+        seed[s.id][key] = { name, assignee:'', email:'', deadline:'', done:false };
+      });
+    });
+    await set(ref(db, 'tasks'), seed);
+  }
+
+  // Subscribe to real-time updates
+  onValue(ref(db, 'tasks'), (snapshot) => {
+    const val = snapshot.val() || {};
+    data = {};
+    SECTIONS.forEach(s => {
+      data[s.id] = {};
+      if (val[s.id]) {
+        Object.entries(val[s.id]).forEach(([k,v]) => {
+          data[s.id][k] = {...v, id:k};
+        });
+      }
+    });
+
+    document.getElementById('loading').classList.add('hidden');
+    renderAll();
+    setSyncStatus('live');
+  }, (error) => {
+    setSyncStatus('error');
+    console.error(error);
+  });
+}
+
+// ─── HELPERS ───
+function urg(d) {
+  if (!d) return '';
+  const diff = (new Date(d) - new Date()) / 86400000;
+  return diff < 1 ? 'urgent' : diff < 3 ? 'soon' : 'ok';
+}
+function fmt(d) {
+  if (!d) return 'дедлайн не указан';
+  return new Date(d+'T00:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+}
+
+// ─── WRITE OPS ───
+window.addTask = function(sid) {
+  setSyncStatus('syncing');
+  const newRef = push(ref(db, `tasks/${sid}`));
+  set(newRef, { name:'', assignee:'', email:'', deadline:'', done:false })
+    .then(() => {
+      setSyncStatus('ok');
+      setTimeout(()=>{
+        const el = document.querySelector(`[data-task="${newRef.key}"] .ti-name`);
+        if (el) el.focus();
+      }, 100);
+    });
+};
+
+window.toggleDone = function(sid, tid) {
+  const t = data[sid][tid];
+  if (!t) return;
+  setSyncStatus('syncing');
+  update(ref(db, `tasks/${sid}/${tid}`), { done: !t.done })
+    .then(() => setSyncStatus('ok'));
+};
+
+window.delTask = function(sid, tid) {
+  setSyncStatus('syncing');
+  remove(ref(db, `tasks/${sid}/${tid}`))
+    .then(() => setSyncStatus('ok'));
+};
+
+window.upField = function(sid, tid, field, val) {
+  setSyncStatus('syncing');
+  update(ref(db, `tasks/${sid}/${tid}`), { [field]: val })
+    .then(() => setSyncStatus('ok'));
+};
+
+window.upDate = function(sid, tid, val) {
+  setSyncStatus('syncing');
+  update(ref(db, `tasks/${sid}/${tid}`), { deadline: val })
+    .then(() => setSyncStatus('ok'));
+};
+
+window.clearAllDone = function() {
+  setSyncStatus('syncing');
+  const promises = [];
+  SECTIONS.forEach(s => {
+    Object.values(data[s.id] || {}).forEach(t => {
+      if (t.done) promises.push(remove(ref(db, `tasks/${s.id}/${t.id}`)));
+    });
+  });
+  Promise.all(promises).then(() => setSyncStatus('ok'));
+};
+
+// ─── EMAIL ───
+window.sendMail = function(sid, tid) {
+  const sec = SECTIONS.find(s=>s.id===sid);
+  const t = data[sid][tid];
+  if (!t || !t.email) { toast('Введите email исполнителя'); return; }
+  const subj = encodeURIComponent(`[${sec.title}] ${t.name||'Задача'}`);
+  const body = encodeURIComponent(`Привет${t.assignee?', '+t.assignee:''}!\n\nТебе назначена задача:\n\n📋 ${t.name||'—'}\n📌 Раздел: ${sec.title}\n📅 Дедлайн: ${fmt(t.deadline)}\n\nС уважением, команда`);
+  window.location.href = `mailto:${t.email}?subject=${subj}&body=${body}`;
+  toast(`✉ Письмо для ${t.email}`);
+};
+
+window.notifyAll = function() {
+  let count = 0, delay = 0;
+  SECTIONS.forEach(s => {
+    Object.values(data[s.id]||{}).filter(t=>!t.done&&t.email&&t.deadline).forEach(t => {
+      setTimeout(()=>window.sendMail(s.id, t.id), delay);
+      delay += 300; count++;
+    });
+  });
+  if (!count) toast('Нет задач с email и дедлайном');
+};
+
+window.exportCSV = function() {
+  const rows = [['Раздел','Задача','Исполнитель','Email','Дедлайн','Статус']];
+  SECTIONS.forEach(s => {
+    Object.values(data[s.id]||{}).forEach(t =>
+      rows.push([`"${s.title}"`,`"${t.name||''}"`,`"${t.assignee||''}"`,t.email||'',t.deadline||'',t.done?'Выполнено':'В работе'])
+    );
+  });
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+  a.download = 'installations.csv'; a.click();
+  toast('↓ CSV скачан');
+};
+
+// ─── TOAST ───
+let toastT;
+window.toast = function(msg) {
+  clearTimeout(toastT);
+  let el = document.querySelector('.toast');
+  if (!el) { el = document.createElement('div'); el.className='toast'; document.body.appendChild(el); }
+  el.textContent = msg; toastT = setTimeout(()=>el.remove(), 2500);
+};
+
+// ─── RENDER ───
+function updateOverall() {
+  let total=0, done=0;
+  SECTIONS.forEach((s,i) => {
+    const tasks = Object.values(data[s.id]||{});
+    const td=tasks.length, dd=tasks.filter(t=>t.done).length;
+    total+=td; done+=dd;
+    const pct = td ? Math.round(dd/td*100) : 0;
+    const sf = document.getElementById('sf-'+i);
+    if (sf) sf.style.width=pct+'%';
+    const cp = document.getElementById('cp-'+s.id);
+    if (cp) cp.style.width=pct+'%';
+    const pp = document.getElementById('pp-'+s.id);
+    if (pp) pp.textContent=pct+'%';
+  });
+  const overall = total ? Math.round(done/total*100) : 0;
+  document.getElementById('overall-pct').textContent = overall+'%';
+  document.getElementById('overall-counts').textContent = done+' из '+total+' задач выполнено';
+
+  // legend
+  const lg = document.getElementById('legend');
+  lg.innerHTML = SECTIONS.map((s,i) => {
+    const tasks = Object.values(data[s.id]||{});
+    const td=tasks.length, dd=tasks.filter(t=>t.done).length;
+    return `<div class="legend-item">
+      <div class="legend-dot" style="background:${s.color}"></div>
+      <span>${s.title}</span>
+      <span class="ldone">${dd}/${td}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderTaskItem(sid, t) {
+  const sec = SECTIONS.find(s=>s.id===sid);
+  const u = urg(t.deadline);
+  const safeN = (t.name||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const safeA = (t.assignee||'').replace(/"/g,'&quot;');
+  const safeE = (t.email||'').replace(/"/g,'&quot;');
+  return `<div class="task-item ${t.done?'done':''}" data-task="${t.id}">
+    <div class="ti-check" onclick="toggleDone('${sid}','${t.id}')"
+      style="${t.done?`background:${sec.color};border-color:${sec.color};`:''}">
+      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+        <path d="M1 3.5L3.3 6 8 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="ti-body">
+      <textarea class="ti-name" rows="1"
+        placeholder="Название задачи..."
+        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+        onblur="upField('${sid}','${t.id}','name',this.value)"
+        style="${t.done?'text-decoration:line-through;color:var(--muted);':''}"
+      >${safeN}</textarea>
+      <div class="ti-meta">
+        <input class="ti-assignee" placeholder="Исполнитель"
+          value="${safeA}"
+          onblur="upField('${sid}','${t.id}','assignee',this.value)"
+        />
+        <span class="meta-sep">·</span>
+        <input class="ti-email" placeholder="email"
+          value="${safeE}"
+          onblur="upField('${sid}','${t.id}','email',this.value)"
+        />
+        <span class="meta-sep">·</span>
+        <input type="date" class="ti-date ${u}"
+          value="${t.deadline||''}"
+          onchange="upDate('${sid}','${t.id}',this.value)"
+        />
+      </div>
+    </div>
+    <div class="ti-actions">
+      <button class="ti-btn mail" onclick="sendMail('${sid}','${t.id}')" title="Письмо">
+        <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+          <rect x=".5" y=".5" width="10" height="8" rx="1.3" stroke="currentColor" stroke-opacity=".5" stroke-width="1.1"/>
+          <path d="M.5 2L5.5 5.5 10.5 2" stroke="currentColor" stroke-opacity=".5" stroke-width="1.1" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="ti-btn del" onclick="delTask('${sid}','${t.id}')" title="Удалить">
+        <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+          <path d="M1 1l7 7M8 1l-7 7" stroke="currentColor" stroke-opacity=".4" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>`;
+}
+
+function renderCol(sid) {
+  const wrap = document.getElementById('tasks-'+sid);
+  if (!wrap) return;
+  const tasks = Object.values(data[sid]||{});
+  wrap.innerHTML = tasks.map(t=>renderTaskItem(sid,t)).join('');
+  wrap.querySelectorAll('.ti-name').forEach(ta => {
+    ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px';
+  });
+}
+
+function renderAll() {
+  const grid = document.getElementById('main-grid');
+  // Build columns if not yet built
+  if (!document.getElementById('col-s1')) {
+    grid.innerHTML = SECTIONS.map(s => `
+      <div class="col" id="col-${s.id}">
+        <div class="col-head">
+          <div class="col-accent" style="background:${s.color}"></div>
+          <div class="col-num">Раздел ${s.num}</div>
+          <div class="col-title">${s.title}</div>
+          <div class="col-progress">
+            <div class="col-prog-track">
+              <div class="col-prog-fill" id="cp-${s.id}" style="background:${s.color};width:0%"></div>
+            </div>
+            <div class="col-prog-pct" id="pp-${s.id}">0%</div>
+          </div>
+        </div>
+        <div class="col-tasks" id="tasks-${s.id}"></div>
+        <div class="col-foot">
+          <button class="add-btn" onclick="addTask('${s.id}')">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+              <path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            Добавить задачу
+          </button>
+        </div>
+      </div>`).join('');
+  }
+
+  SECTIONS.forEach(s => renderCol(s.id));
+  updateOverall();
+}
+
+init();
+</script>
+</body>
+</html>
